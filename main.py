@@ -12,18 +12,22 @@ from particles import ParticleSystem
 WIDTH = 1280
 HEIGHT = 512
 FPS = 60
+GAME_OVER = False
 
 # basic pygame setup
 pygame.init()
+pygame.font.init()
+
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Game")
 CLOCK = pygame.time.Clock()
+
+FONT = pygame.font.SysFont('Arial', 15)
 
 class Entity:
     entities = []
     def __init__(self):
         Entity.entities.append(self)
-
 
 class Pos:
     def __init__(self, x_pos, y_pos, width, height):
@@ -177,7 +181,7 @@ class Player(Entity):
             self.angle = bound_radian(self.angle + -0.04)
             self.delta_x = math.cos(self.angle) * 5
             self.delta_y = math.sin(self.angle) * 5
-        if keys[pygame.K_RIGHT]:
+        elif keys[pygame.K_RIGHT]:
             self.angle = bound_radian(self.angle +  0.04)
             self.delta_x = math.cos(self.angle) * 5
             self.delta_y = math.sin(self.angle) * 5
@@ -196,8 +200,7 @@ class Player(Entity):
                     self.pos.x_pos = updated_x
                 if updated_y >= 0 and updated_y + self.pos.height <= HEIGHT:
                     self.pos.y_pos = updated_y
-
-        if keys[pygame.K_DOWN]:
+        elif keys[pygame.K_DOWN]:
             updated_x = self.pos.x_pos - self.delta_x
             updated_y = self.pos.y_pos - self.delta_y
             updated_aabb = AABB(updated_x, updated_y, self.pos.width, self.pos.height)
@@ -256,26 +259,30 @@ while True:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit(0)
+        if not GAME_OVER:
+            # updating
+            KEYS = pygame.key.get_pressed()
+            PLAYER.update(KEYS, ZOMBIES)
 
-        # updating
-        KEYS = pygame.key.get_pressed()
-        PLAYER.update(KEYS, ZOMBIES)
+            ZOMBIES = timed_instantiate(Zombie, (random.choice([-15, WIDTH + 15]),
+                                                 random.randint(0, HEIGHT), PLAYER), 90, ZOMBIES)
 
-        ZOMBIES = timed_instantiate(Zombie, (random.choice([-15, WIDTH + 15]),
-                                             random.randint(0, HEIGHT), PLAYER), 90, ZOMBIES)
+            for zombie in ZOMBIES:
+                zombie.update()
 
-        for zombie in ZOMBIES:
-            zombie.update()
-
-        # remove dead zombies
-        for zombie in ZOMBIES[:]:
-            if zombie.health <= 0:
-                ZOMBIES.remove(zombie)
-
-        # drawing
-        PLAYER.draw()
-        for zombie in ZOMBIES:
-            zombie.draw()
+            # remove dead zombies
+            for zombie in ZOMBIES[:]:
+                if zombie.health <= 0:
+                    ZOMBIES.remove(zombie)
+            if PLAYER.health.health == 0:
+                GAME_OVER = True
+            # drawing
+            PLAYER.draw()
+            for zombie in ZOMBIES:
+                zombie.draw()
+        else:
+            GAME_OVER_MESSAGE = FONT.render("GAME OVER", True, (255, 255, 255))
+            SCREEN.blit(GAME_OVER_MESSAGE, (WIDTH // 2, HEIGHT // 2))
 
         pygame.display.update()
         CLOCK.tick(FPS)
