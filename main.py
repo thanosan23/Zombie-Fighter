@@ -1,6 +1,7 @@
 import math
 import random
 import sys
+from enum import Enum
 import pygame
 
 from collision import AABB
@@ -23,6 +24,7 @@ class Entity:
     def __init__(self):
         Entity.entities.append(self)
 
+
 class Pos:
     def __init__(self, x_pos, y_pos, width, height):
         self.x_pos = x_pos
@@ -33,14 +35,23 @@ class Pos:
     def __str__(self):
         return f"{self.x_pos}, {self.y_pos}"
 
+class HealthMode(Enum):
+    GREEN = 0
+    YELLOW = 1
+    RED = 2
 class Health:
     def __init__(self, entity, damage=1):
         self.entity = entity
         self.damage = damage
         self.health = 100
+        self.mode = HealthMode.GREEN
 
     def lose_health(self):
         self.health -= self.damage
+        if self.health < 75 and self.health >= 25:
+            self.mode = HealthMode.YELLOW
+        elif self.health < 25:
+            self.mode = HealthMode.RED
         self.health = max(self.health, 0)
 
     def draw(self):
@@ -48,7 +59,13 @@ class Health:
         health_rect = pygame.Rect(10, 10, self.health, 5)
 
         pygame.draw.rect(SCREEN, (255, 255, 255), outer_rect)
-        pygame.draw.rect(SCREEN, (255, 0, 0), health_rect)
+        if self.mode == HealthMode.GREEN:
+            colour = (0, 255, 0)
+        elif self.mode == HealthMode.YELLOW:
+            colour = (255, 255, 0)
+        elif self.mode == HealthMode.RED:
+            colour = (255, 0, 0)
+        pygame.draw.rect(SCREEN, colour, health_rect)
 
 class Projectile:
     def __init__(self, x, y, angle):
@@ -233,31 +250,35 @@ def timed_instantiate(entity, args, interval, collection):
 ZOMBIES = []
 # game loop
 while True:
-    SCREEN.fill((0, 0, 0))
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit(0)
+    try:
+        SCREEN.fill((0, 0, 0))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit(0)
 
-    # updating
-    KEYS = pygame.key.get_pressed()
-    PLAYER.update(KEYS, ZOMBIES)
+        # updating
+        KEYS = pygame.key.get_pressed()
+        PLAYER.update(KEYS, ZOMBIES)
 
-    ZOMBIES = timed_instantiate(Zombie, (random.choice([-15, WIDTH + 15]),
-                                         random.randint(0, HEIGHT), PLAYER), 90, ZOMBIES)
+        ZOMBIES = timed_instantiate(Zombie, (random.choice([-15, WIDTH + 15]),
+                                             random.randint(0, HEIGHT), PLAYER), 90, ZOMBIES)
 
-    for zombie in ZOMBIES:
-        zombie.update()
+        for zombie in ZOMBIES:
+            zombie.update()
 
-    # remove dead zombies
-    for zombie in ZOMBIES[:]:
-        if zombie.health <= 0:
-            ZOMBIES.remove(zombie)
+        # remove dead zombies
+        for zombie in ZOMBIES[:]:
+            if zombie.health <= 0:
+                ZOMBIES.remove(zombie)
 
-    # drawing
-    PLAYER.draw()
-    for zombie in ZOMBIES:
-        zombie.draw()
+        # drawing
+        PLAYER.draw()
+        for zombie in ZOMBIES:
+            zombie.draw()
 
-    pygame.display.update()
-    CLOCK.tick(FPS)
+        pygame.display.update()
+        CLOCK.tick(FPS)
+    except KeyboardInterrupt:
+        print("[+] Exiting normally")
+        sys.exit(0)
